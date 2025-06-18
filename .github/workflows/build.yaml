@@ -1,0 +1,281 @@
+name: Build PHP MediaEase
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/build.yaml'
+  workflow_dispatch:
+    inputs:
+      static_php_tag:
+        description: 'static-php release tag (e.g. v8.4.0)'
+        required: true
+        default: 'latest'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build php-static
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Checkout tools repository
+        uses: actions/checkout@v4
+        with:
+          repository: MediaEase-binaries/tools
+          path: tools
+
+      - name: Set static-php tag
+        run: |
+          if [ "${{ github.event.inputs.static_php_tag }}" = "latest" ]; then
+            tag=$(curl -s https://api.github.com/repos/MediaEase-binaries/static-php/releases/latest | jq -r .tag_name)
+          else
+            tag="${{ github.event.inputs.static_php_tag }}"
+          fi
+          echo "STATIC_PHP_TAG=$tag" >> $GITHUB_ENV
+
+      - name: Bootstrap container
+        run: |
+          sudo apt-get update
+          sudo apt-get install -yqq jq wget unzip dpkg-dev upx-ucl lsb-release 
+
+      - name: Download static-php release assets
+        run: |
+          mkdir -p static-php-release
+          release_url="https://api.github.com/repos/MediaEase-binaries/static-php/releases/tags/${{ env.STATIC_PHP_TAG }}"
+          assets=$(curl -sL $release_url | jq -r '.assets[] | .name + ":" + .browser_download_url')
+          for asset in php-cli php-fpm build-meta license-files; do
+            url=$(echo "$assets" | grep "^$asset" | cut -d: -f2-)
+            if [ -n "$url" ]; then
+              wget -O "static-php-release/$asset" "$url"
+            fi
+          done
+          if ! command -v unzip >/dev/null 2>&1; then
+            sudo apt-get install unzip
+          fi
+          for file in static-php-release/*.zip; do
+            unzip -o "$file" -d static-php-release/
+            rm "$file"
+          done
+          mkdir -p static-php-release/usr/local/bin/
+          curl -fL --output static-php-release/usr/local/bin/pie https://github.com/php/pie/releases/latest/download/pie.phar
+          chmod +x static-php-release/usr/local/bin/pie
+          EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
+          static-php-release/php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+          ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
+          if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]
+          then
+              >&2 echo 'ERROR: Invalid installer checksum'
+              rm composer-setup.php
+              exit 1
+          fi
+          static-php-release/php composer-setup.php --quiet
+          rm composer-setup.php
+          mv composer.phar static-php-release/usr/local/bin/composer
+          wget https://get.symfony.com/cli/installer -O - | bash
+          symfony_bin=$(find / -type f -name "symfony" | head -n 1)
+          mv "$symfony_bin" static-php-release/usr/local/bin/symfony
+          chmod +x static-php-release/usr/local/bin/symfony
+          for file in static-php-release/*; do
+            find "$file" -type f -exec file {} \; | grep ELF | cut -d: -f1 | while read -r file; do
+              if [ -f "$file" ] && [ -x "$file" ]; then
+                  strip --strip-unneeded "$file" 2>/dev/null || true
+                  chmod +x "$file" 2>/dev/null || true
+                  if file "$file" | grep -q "ELF.*executable" && command -v upx >/dev/null 2>&1; then
+                      upx --best --lzma "$file" 2>/dev/null || true
+                  fi
+              fi
+          done
+
+      - name: Get version from tag
+        run: |
+          version=$(echo ${{ env.STATIC_PHP_TAG }} | sed 's/^v//')
+          echo "PHP_VERSION=$version" >> $GITHUB_ENV
+
+      - name: Prepare artifacts
+        id: prepare_artifacts
+        run: |
+          mkdir artifacts
+          sudo apt-get install lsb-release
+          distro=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
+          codename=$(lsb_release -cs)
+          PKG_NAME="php-static_${{ env.PHP_VERSION }}-${distro}_${ARCHITECTURE}"
+          echo "PKG_NAME=${PKG_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Build Debian Package
+        id: build_deb
+        run: |
+          PKG_DIR="package_php-static"
+          ARCHITECTURE="amd64"
+          mkdir -p "$PKG_DIR/DEBIAN" "$PKG_DIR/usr/share/doc/php-static"
+          if [ -f static-php-release/php ]; then
+            mkdir -p "$PKG_DIR/usr/bin/php${{ env.PHP_VERSION }}"
+            cp static-php-release/php "$PKG_DIR/usr/bin/php${{ env.PHP_VERSION }}/php"
+          fi
+          if [ -f static-php-release/php-fpm ]; then
+            mkdir -p "$PKG_DIR/usr/sbin/php${{ env.PHP_VERSION }}"
+            cp static-php-release/php-fpm "$PKG_DIR/usr/sbin/php${{ env.PHP_VERSION }}/php-fpm"
+          fi
+          if [ -f static-php-release/composer ]; then
+            mkdir -p "$PKG_DIR/usr/local/bin"
+            cp static-php-release/composer "$PKG_DIR/usr/local/bin/composer"
+            "$PKG_DIR/usr/local/bin/composer" self-update --stable
+          fi
+          if [ -f static-php-release/pie ]; then
+            mkdir -p "$PKG_DIR/usr/local/bin"
+            cp static-php-release/pie "$PKG_DIR/usr/local/bin/pie"
+          fi
+          if [ -f static-php-release/symfony ]; then
+            mkdir -p "$PKG_DIR/usr/local/bin"
+            cp static-php-release/symfony "$PKG_DIR/usr/local/bin/symfony"
+          fi
+          cp static-php-release/build-meta.json static-php-release/*.txt static-php-release/build-extensions.json "$PKG_DIR/usr/share/doc/php-static/"
+          installed_size=$(du -s -k "$PKG_DIR" | cut -f1)
+          modules=$(jq -r 'join(",")' static-php-release/build-extensions.json | tr ',' '\n' | sort -u | tr '\n' ',' | sed 's/,$//')
+          cp tools/packages/php/control "$PKG_DIR/DEBIAN/control"
+          sed -i "s/@VERSION@/${{ env.PHP_VERSION }}/" "$PKG_DIR/DEBIAN/control"
+          sed -i "s/@ARCHITECTURE@/${ARCHITECTURE}/" "$PKG_DIR/DEBIAN/control"
+          sed -i "s/@SIZE@/${installed_size}/" "$PKG_DIR/DEBIAN/control"
+          sed -i "s/@MODULES@/$modules/" "$PKG_DIR/DEBIAN/control"
+          sed -i "s/@DATE@/$(date +%Y-%m-%d)/" "$PKG_DIR/DEBIAN/control"
+          sed -i "s/@MAINTAINER@/${COMMITTER_NAME} <${COMMITTER_EMAIL}>/" "$PKG_DIR/DEBIAN/control"
+          cp tools/packages/php/postinst tools/packages/php/prerm "$PKG_DIR/DEBIAN/"
+          chmod +x "$PKG_DIR/DEBIAN/postinst" "$PKG_DIR/DEBIAN/prerm"
+          cd "$PKG_DIR"
+          find . -type f ! -path './DEBIAN/*' -exec md5sum {} \; > DEBIAN/md5sums
+          cd ..
+          dpkg-deb --build -Zxz -z9 -Sextreme "$PKG_DIR" "${{ steps.prepare_artifacts.outputs.PKG_NAME }}.deb"
+          mv "${{ steps.prepare_artifacts.outputs.PKG_NAME }}.deb" artifacts/
+
+      - name: Generate metadata
+        run: |
+          cd artifacts
+          codename=$(lsb_release -cs)
+          ../tools/generate_metadata.sh \
+            --category "php" \
+            --tag      "stable" \
+            --version  "${{ env.PHP_VERSION }}" \
+            --os       "${codename}" \
+            --extra    "modules=${modules}" \
+            --extra    "tools=composer,pie,symfony" \
+            "${{ steps.prepare_artifacts.outputs.PKG_NAME }}.deb"
+          cd ..
+          ls -l
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PKG_NAME }}
+          path: artifacts/
+
+  create_release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: downloaded_artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir release_assets
+          find downloaded_artifacts -type f -exec cp {} release_assets/ \;
+
+      - name: Prepare release notes
+        id: prepare_notes
+        run: |
+          TEMP_DIR=$(mktemp -d)
+          PACKAGES_TABLE="$TEMP_DIR/packages.md"
+          CONFIG_TABLE="$TEMP_DIR/config.md"
+          
+          # Generate packages table
+          {
+            echo "| Package | PHP Version |"
+            echo "| ------- | ----------- |"
+            for f in release_assets/*.deb; do
+              if [ -f "$f" ]; then
+                pkg=$(basename "$f")
+                php_version=$(echo "$pkg" | grep -o "php-static_[0-9.]*" | cut -d'_' -f2)
+                echo "| $pkg | $php_version |"
+              fi
+            done
+          } > "$PACKAGES_TABLE"
+
+          json_file=$(find release_assets -name "php-static_${{ env.PHP_VERSION }}*.json" | head -n1)
+          ENABLED_MODULES=$(jq -r '.enabled_modules | if type=="array" then join(",") else . end' "$json_file")
+          ENABLED_TOOLS=$(jq -r '.enabled_tools | if type=="array" then join(",") else . end' "$json_file")
+          # Generate config table
+          {
+            echo "| Option | Value |"
+            echo "| ------ | ----- |"
+            echo "| Build Type | Static |"
+            echo "| Architecture | amd64 |"
+            echo "| Included Modules | $ENABLED_MODULES |"
+            echo "| Included Tools | $ENABLED_TOOLS |"
+          } > "$CONFIG_TABLE"
+          
+          echo "packages_table<<EOF" >> $GITHUB_OUTPUT
+          cat "$PACKAGES_TABLE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "config_table<<EOF" >> $GITHUB_OUTPUT
+          cat "$CONFIG_TABLE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          rm -rf "$TEMP_DIR"
+
+      - name: Create GitHub Release with Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.PHP_VERSION }}
+          name: PHPv${{ env.PHP_VERSION }}
+          draft: false
+          generate_release_notes: true
+          body: |
+            # PHP MediaEase v${{ env.PHP_VERSION }}
+
+            Pre-built PHP MediaEase packages for MediaEase applications.
+
+            ## 🎯 Features
+
+            - Static PHP CLI and FPM binaries optimized for MediaEase
+            - Essential PHP extensions included
+            - Pre-compiled binaries ready to use
+            - Automated builds via GitHub Actions
+
+            ## 📦 Available Packages
+
+            ${{ steps.prepare_notes.outputs.packages_table }}
+
+            ## 🔧 Build Configuration
+
+            ${{ steps.prepare_notes.outputs.config_table }}
+
+            ## 📋 Installation
+
+            ### Manual Installation
+            1. Download the appropriate .deb package for your system
+            2. Install using: `sudo dpkg -i package_name.deb`
+            3. Fix any dependencies if needed: `sudo apt-get install -f`
+
+            ## 🔍 Package Details
+
+            The packages are built with:
+            - System-wide installation in `/usr/bin/php` and `/usr/bin/php-fpm`
+            - Documentation in `/usr/share/doc/php-static/`
+            - Compiled on $(date +%Y-%m-%d)
+          files: |
+            release_assets/* 
