@@ -2,7 +2,7 @@ name: Build PHP MediaEase
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - '.github/workflows/build.yaml'
   workflow_dispatch:
@@ -58,10 +58,10 @@ jobs:
           if ! command -v unzip >/dev/null 2>&1; then
             sudo apt-get install unzip
           fi
-          for file in static-php-release/*.zip; do
-            unzip -o "$file" -d static-php-release/
-            rm "$file"
-          done
+          find static-php-release/ -type f
+          ls -lah static-php-release/
+          find static-php-release/ -type f -name "*.zip" -exec unzip -o {} -d static-php-release/ \;
+          find static-php-release/ -type f -name "*.zip" -delete
           mkdir -p static-php-release/usr/local/bin/
           curl -fL --output static-php-release/usr/local/bin/pie https://github.com/php/pie/releases/latest/download/pie.phar
           chmod +x static-php-release/usr/local/bin/pie
