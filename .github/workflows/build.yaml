@@ -63,6 +63,7 @@ jobs:
           chmod +x static-php-release/usr/local/bin/pie
           EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
           php_bin=$(find static-php-release/ -type f -name "php-cli")
+          chmod +x "$php_bin"
           "$php_bin" -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
           ACTUAL_CHECKSUM="$("$php_bin" -r "echo hash_file('sha384', 'composer-setup.php');")"
           if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]
