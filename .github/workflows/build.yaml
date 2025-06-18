@@ -1,10 +1,6 @@
 name: Build PHP MediaEase
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/build.yaml'
   workflow_dispatch:
     inputs:
       static_php_tag:
@@ -66,15 +62,16 @@ jobs:
           curl -fL --output static-php-release/usr/local/bin/pie https://github.com/php/pie/releases/latest/download/pie.phar
           chmod +x static-php-release/usr/local/bin/pie
           EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
-          static-php-release/php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-          ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
+          php_bin=$(find static-php-release/ -type f -name "php-cli")
+          "$php_bin" -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+          ACTUAL_CHECKSUM="$("$php_bin" -r "echo hash_file('sha384', 'composer-setup.php');")"
           if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]
           then
               >&2 echo 'ERROR: Invalid installer checksum'
               rm composer-setup.php
               exit 1
           fi
-          static-php-release/php composer-setup.php --quiet
+          "$php_bin" composer-setup.php --quiet
           rm composer-setup.php
           mv composer.phar static-php-release/usr/local/bin/composer
           wget https://get.symfony.com/cli/installer -O - | bash
