@@ -15,7 +15,8 @@ jobs:
   build:
     name: build php-static
     runs-on: ubuntu-latest
-
+    outputs:
+      php_version: ${{ steps.get_version.outputs.PHP_VERSION }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -39,61 +40,69 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -yqq jq wget unzip dpkg-dev upx-ucl lsb-release 
+      
+      - name: Get version from tag
+        id: get_version
+        run: |
+          version=$(echo ${{ env.STATIC_PHP_TAG }} | sed 's/^v//')
+          echo "PHP_VERSION=$version" >> $GITHUB_ENV
+          PHP_SHORT_VERSION=$(echo "$version" | sed 's/\.[0-9]*$//')
+          echo "php_short_version=$PHP_SHORT_VERSION" >> $GITHUB_ENV
 
       - name: Download static-php release assets
         run: |
-          mkdir -p static-php-release
+          bindir="usr/local/bin"
+          licensedir="usr/local/share/licenses/static-php"
+          base_bindir="static-php-release/$bindir"
+          base_sbindir="static-php-release/usr/local/sbin"
+          base_licensedir="static-php-release/$licensedir"
+          bash_completion_dir="static-php-release/etc/bash_completion.d"
+          php_conf_dir="static-php-release/etc/static-php/conf.d"
+          mkdir -p $base_bindir $base_licensedir package/usr $bash_completion_dir $php_conf_dir $base_sbindir
           release_url="https://api.github.com/repos/MediaEase-binaries/static-php/releases/tags/${{ env.STATIC_PHP_TAG }}"
           assets=$(curl -sL $release_url | jq -r '.assets[] | .name + ":" + .browser_download_url')
           for asset in php-cli php-fpm build-meta license-files; do
             url=$(echo "$assets" | grep "^$asset" | cut -d: -f2-)
             if [ -n "$url" ]; then
-              wget -O "static-php-release/$asset" "$url"
+              wget -O "/tmp/$asset" "$url"
+              unzip -o "/tmp/$asset" -d static-php-release/
             fi
           done
-          if ! command -v unzip >/dev/null 2>&1; then
-            sudo apt-get install unzip
-          fi
-          find static-php-release/ -type f
-          ls -lah static-php-release/
-          find static-php-release/ -type f -name "*.zip" -exec unzip -o {} -d static-php-release/ \;
-          find static-php-release/ -type f -name "*.zip" -delete
-          mkdir -p static-php-release/usr/local/bin/
-          curl -fL --output static-php-release/usr/local/bin/pie https://github.com/php/pie/releases/latest/download/pie.phar
-          chmod +x static-php-release/usr/local/bin/pie
-          EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
-          php_bin=$(find static-php-release/ -type f -name "php-cli")
-          chmod +x "$php_bin"
+          php_bin=$(find static-php-release/ -type f -name "php")
+          EXPECTED_CHECKSUM="$($php_bin -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
           "$php_bin" -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
           ACTUAL_CHECKSUM="$("$php_bin" -r "echo hash_file('sha384', 'composer-setup.php');")"
           if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]
           then
-              >&2 echo 'ERROR: Invalid installer checksum'
-              rm composer-setup.php
-              exit 1
+            >&2 echo 'ERROR: Invalid installer checksum'
+            rm composer-setup.php
+            exit 1
           fi
           "$php_bin" composer-setup.php --quiet
           rm composer-setup.php
-          mv composer.phar static-php-release/usr/local/bin/composer
-          wget https://get.symfony.com/cli/installer -O - | bash
-          symfony_bin=$(find / -type f -name "symfony" | head -n 1)
-          mv "$symfony_bin" static-php-release/usr/local/bin/symfony
-          chmod +x static-php-release/usr/local/bin/symfony
-          for file in static-php-release/*; do
-            find "$file" -type f -exec file {} \; | grep ELF | cut -d: -f1 | while read -r file; do
-              if [ -f "$file" ] && [ -x "$file" ]; then
-                  strip --strip-unneeded "$file" 2>/dev/null || true
-                  chmod +x "$file" 2>/dev/null || true
-                  if file "$file" | grep -q "ELF.*executable" && command -v upx >/dev/null 2>&1; then
-                      upx --best --lzma "$file" 2>/dev/null || true
-                  fi
+          mv composer.phar $base_bindir/composer
+          curl -fL --output /tmp/pie https://github.com/php/pie/releases/latest/download/pie.phar
+          mv /tmp/pie $base_bindir/pie
+          chmod +x $base_bindir/pie
+          wget https://get.symfony.com/cli/installer -O - | bash -s -- --install-dir=$base_bindir
+          mv static-php-release/php $base_bindir/php${{ env.php_short_version }}
+          mv static-php-release/php-fpm $base_sbindir/php-fpm${{ env.php_short_version }}
+          mv static-php-release/*.txt $base_licensedir
+          ./${base_bindir}/composer completion bash | sudo tee $bash_completion_dir/composer
+          ./${base_bindir}/symfony self:completion bash | sudo tee $bash_completion_dir/symfony
+          mv static-php-release/usr/* package/usr/
+          mv static-php-release/etc/ package/etc/
+          mkdir -p $php_conf_dir
+          curl -fL https://raw.githubusercontent.com/php/php-src/master/php.ini-production -o $php_conf_dir/php.ini
+          find package/usr/local/bin/ -type f -print0 | while IFS= read -r -d $'\0' file; do
+            if [ -f "$file" ] && [ -x "$file" ]; then
+              strip --strip-unneeded "$file" 2>/dev/null || true
+              chmod +x "$file" 2>/dev/null || true
+              if file "$file" | grep -q "ELF.*executable" && command -v upx >/dev/null 2>&1; then
+                upx --best --lzma "$file" 2>/dev/null || true
               fi
+            fi
           done
-
-      - name: Get version from tag
-        run: |
-          version=$(echo ${{ env.STATIC_PHP_TAG }} | sed 's/^v//')
-          echo "PHP_VERSION=$version" >> $GITHUB_ENV
 
       - name: Prepare artifacts
         id: prepare_artifacts
@@ -102,6 +111,7 @@ jobs:
           sudo apt-get install lsb-release
           distro=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
           codename=$(lsb_release -cs)
+          ARCHITECTURE="amd64"
           PKG_NAME="php-static_${{ env.PHP_VERSION }}-${distro}_${ARCHITECTURE}"
           echo "PKG_NAME=${PKG_NAME}" >> $GITHUB_OUTPUT
 
@@ -111,28 +121,6 @@ jobs:
           PKG_DIR="package_php-static"
           ARCHITECTURE="amd64"
           mkdir -p "$PKG_DIR/DEBIAN" "$PKG_DIR/usr/share/doc/php-static"
-          if [ -f static-php-release/php ]; then
-            mkdir -p "$PKG_DIR/usr/bin/php${{ env.PHP_VERSION }}"
-            cp static-php-release/php "$PKG_DIR/usr/bin/php${{ env.PHP_VERSION }}/php"
-          fi
-          if [ -f static-php-release/php-fpm ]; then
-            mkdir -p "$PKG_DIR/usr/sbin/php${{ env.PHP_VERSION }}"
-            cp static-php-release/php-fpm "$PKG_DIR/usr/sbin/php${{ env.PHP_VERSION }}/php-fpm"
-          fi
-          if [ -f static-php-release/composer ]; then
-            mkdir -p "$PKG_DIR/usr/local/bin"
-            cp static-php-release/composer "$PKG_DIR/usr/local/bin/composer"
-            "$PKG_DIR/usr/local/bin/composer" self-update --stable
-          fi
-          if [ -f static-php-release/pie ]; then
-            mkdir -p "$PKG_DIR/usr/local/bin"
-            cp static-php-release/pie "$PKG_DIR/usr/local/bin/pie"
-          fi
-          if [ -f static-php-release/symfony ]; then
-            mkdir -p "$PKG_DIR/usr/local/bin"
-            cp static-php-release/symfony "$PKG_DIR/usr/local/bin/symfony"
-          fi
-          cp static-php-release/build-meta.json static-php-release/*.txt static-php-release/build-extensions.json "$PKG_DIR/usr/share/doc/php-static/"
           installed_size=$(du -s -k "$PKG_DIR" | cut -f1)
           modules=$(jq -r 'join(",")' static-php-release/build-extensions.json | tr ',' '\n' | sort -u | tr '\n' ',' | sed 's/,$//')
           cp tools/packages/php/control "$PKG_DIR/DEBIAN/control"
@@ -149,18 +137,22 @@ jobs:
           cd ..
           dpkg-deb --build -Zxz -z9 -Sextreme "$PKG_DIR" "${{ steps.prepare_artifacts.outputs.PKG_NAME }}.deb"
           mv "${{ steps.prepare_artifacts.outputs.PKG_NAME }}.deb" artifacts/
+          echo "modules=${modules}" >> $GITHUB_OUTPUT
 
       - name: Generate metadata
         run: |
           cd artifacts
           codename=$(lsb_release -cs)
+          composer_version=$(../package/usr/local/bin/composer -V | head -n1 | grep -o "version [0-9.]*" | cut -d' ' -f2)
+          pie_version=$(../package/usr/local/bin/pie -V | grep -o "[0-9.]*")
+          symfony_version=$(../package/usr/local/bin/symfony -V | grep -E -o "[0-9]+\.[0-9]+\.[0-9]+" | head -n1)
           ../tools/generate_metadata.sh \
             --category "php" \
             --tag      "stable" \
             --version  "${{ env.PHP_VERSION }}" \
             --os       "${codename}" \
-            --extra    "modules=${modules}" \
-            --extra    "tools=composer,pie,symfony" \
+            --extra    "modules=${{ steps.build_deb.outputs.modules }}" \
+            --extra    "tools=composer:${composer_version},pie:${pie_version},symfony:${symfony_version}" \
             "${{ steps.prepare_artifacts.outputs.PKG_NAME }}.deb"
           cd ..
           ls -l
@@ -168,7 +160,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.PKG_NAME }}
+          name: php-static-${{ env.PHP_VERSION }}
           path: artifacts/
 
   create_release:
@@ -214,9 +206,9 @@ jobs:
             done
           } > "$PACKAGES_TABLE"
 
-          json_file=$(find release_assets -name "php-static_${{ env.PHP_VERSION }}*.json" | head -n1)
-          ENABLED_MODULES=$(jq -r '.enabled_modules | if type=="array" then join(",") else . end' "$json_file")
-          ENABLED_TOOLS=$(jq -r '.enabled_tools | if type=="array" then join(",") else . end' "$json_file")
+          json_file=$(find release_assets -name "*.json" | head -n1)
+          ENABLED_MODULES=$(jq -r '.modules | if type=="array" then join(",") else . end' "$json_file")
+          ENABLED_TOOLS=$(jq -r '.tools | if type=="array" then join(",") else . end' "$json_file")
           # Generate config table
           {
             echo "| Option | Value |"
@@ -238,18 +230,21 @@ jobs:
       - name: Create GitHub Release with Assets
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ env.PHP_VERSION }}
-          name: PHPv${{ env.PHP_VERSION }}
+          tag_name: v${{ needs.build.outputs.php_version }}
+          name: PHP Static v${{ needs.build.outputs.php_version }}
           draft: false
           generate_release_notes: true
           body: |
-            # PHP MediaEase v${{ env.PHP_VERSION }}
+            # PHP MediaEase v${{ needs.build.outputs.php_version }}
 
-            Pre-built PHP MediaEase packages for MediaEase applications.
+            Pre-built static PHP packages for MediaEase applications.
 
             ## 🎯 Features
 
             - Static PHP CLI and FPM binaries optimized for MediaEase
+            - Composer package manager included
+            - PHP Installer for Extensions (PIE) included
+            - Symfony CLI included
             - Essential PHP extensions included
             - Pre-compiled binaries ready to use
             - Automated builds via GitHub Actions
@@ -276,4 +271,4 @@ jobs:
             - Documentation in `/usr/share/doc/php-static/`
             - Compiled on $(date +%Y-%m-%d)
           files: |
-            release_assets/* 
+            release_assets/*
