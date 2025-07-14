@@ -1,50 +1,18 @@
 php_static_versions:
   include:
-  - version: 8.1.32
+  - version: 8.1.33
     major: '8.1'
-    extensions: apcu,bcmath,bz2,calendar,ctype,curl,dba,dom,event,exif,fileinfo,filter,ftp,gd,gmp,iconv,imagick,imap,intl,
-      mbregex,mbstring,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pgsql,phar,posix,protobuf,readline,redis,
-      session,shmop,simplexml,soap,sockets,sodium,sqlite3,swoole,swoole-hook-mysql,swoole-hook-pgsql,swoole-hook-sqlite,
-      sysvmsg,sysvsem,sysvshm,tokenizer,xml,xmlreader,xmlwriter,xsl,zip,zlib
-    libs: pkg-config,lib-base,bzip2,zlib,openssl,brotli,libiconv,icu,libxml2,nghttp2,libcares,curl,libevent,libpng,
-      libwebp,libjpeg,freetype,gmp,libtiff,libde265,libaom,libheif,libzip,imagemagick,imap,onig,ncurses,readline,
-      libxslt,libsodium,postgresql,sqlite
-    conflicts: php8.0-cli,php8.0-fpm,php8.1-cli,php8.1-fpm,php8.2-cli,php8.2-fpm,php8.3-cli,php8.3-fpm,php8.4-cli,php8.4-fpm,
-      php-cli,php-fpm
-    provides: php-cli,php-fpm,php-cgi,php-common,php-pie,symfony-cli,composer
-  - version: 8.2.28
+    extensions: apcu,bcmath,bz2,calendar,ctype,curl,dba,dom,event,exif,fileinfo,filter,ftp,gd,gmp,iconv,imagick,imap,intl,mbregex,mbstring,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pgsql,phar,posix,protobuf,readline,redis,session,shmop,simplexml,soap,sockets,sodium,sqlite3,swoole,swoole-hook-mysql,swoole-hook-pgsql,swoole-hook-sqlite,sysvmsg,sysvsem,sysvshm,tokenizer,xml,xmlreader,xmlwriter,xsl,zip,zlib
+    libs: pkg-config,lib-base,bzip2,zlib,openssl,brotli,libiconv,icu,libxml2,nghttp2,libcares,curl,libevent,libpng,libwebp,libjpeg,freetype,gmp,libtiff,libde265,libaom,libheif,libzip,imagemagick,imap,onig,ncurses,readline,libxslt,libsodium,postgresql,sqlite
+  - version: 8.2.29
     major: '8.2'
-    extensions: apcu,bcmath,bz2,calendar,ctype,curl,dba,dom,event,exif,fileinfo,filter,ftp,gd,gmp,iconv,imagick,imap,intl,
-      mbregex,mbstring,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pgsql,phar,posix,protobuf,readline,redis,
-      session,shmop,simplexml,soap,sockets,sodium,sqlite3,swoole,swoole-hook-mysql,swoole-hook-pgsql,swoole-hook-sqlite,
-      sysvmsg,sysvsem,sysvshm,tokenizer,xml,xmlreader,xmlwriter,xsl,zip,zlib
-    libs: pkg-config,lib-base,bzip2,zlib,openssl,brotli,libiconv,icu,libxml2,nghttp2,libcares,curl,libevent,libpng,
-      libwebp,libjpeg,freetype,gmp,libtiff,libde265,libaom,libheif,libzip,imagemagick,imap,onig,ncurses,readline,
-      libxslt,libsodium,postgresql,sqlite
-    conflicts: php8.0-cli,php8.0-fpm,php8.1-cli,php8.1-fpm,php8.2-cli,php8.2-fpm,php8.3-cli,php8.3-fpm,php8.4-cli,php8.4-fpm,
-      php-cli,php-fpm
-    provides: php-cli,php-fpm,php-cgi,php-common,php-pie,symfony-cli,composer
-  - version: 8.3.20
+    extensions: apcu,bcmath,bz2,calendar,ctype,curl,dba,dom,event,exif,fileinfo,filter,ftp,gd,gmp,iconv,imagick,imap,intl,mbregex,mbstring,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pgsql,phar,posix,protobuf,readline,redis,session,shmop,simplexml,soap,sockets,sodium,sqlite3,swoole,swoole-hook-mysql,swoole-hook-pgsql,swoole-hook-sqlite,sysvmsg,sysvsem,sysvshm,tokenizer,xml,xmlreader,xmlwriter,xsl,zip,zlib
+    libs: pkg-config,lib-base,bzip2,zlib,openssl,brotli,libiconv,icu,libxml2,nghttp2,libcares,curl,libevent,libpng,libwebp,libjpeg,freetype,gmp,libtiff,libde265,libaom,libheif,libzip,imagemagick,imap,onig,ncurses,readline,libxslt,libsodium,postgresql,sqlite
+  - version: 8.3.23
     major: '8.3'
-    extensions: apcu,bcmath,bz2,calendar,ctype,curl,dba,dom,event,exif,fileinfo,filter,ftp,gd,gmp,iconv,imagick,imap,intl,
-      mbregex,mbstring,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pgsql,phar,posix,protobuf,readline,redis,
-      session,shmop,simplexml,soap,sockets,sodium,sqlite3,swoole,swoole-hook-mysql,swoole-hook-pgsql,swoole-hook-sqlite,
-      sysvmsg,sysvsem,sysvshm,tokenizer,xml,xmlreader,xmlwriter,xsl,zip,zlib
-    libs: pkg-config,lib-base,bzip2,zlib,openssl,brotli,libiconv,icu,libxml2,nghttp2,libcares,curl,libevent,libpng,
-      libwebp,libjpeg,freetype,gmp,libtiff,libde265,libaom,libheif,libzip,imagemagick,imap,onig,ncurses,readline,
-      libxslt,libsodium,postgresql,sqlite
-    conflicts: php8.0-cli,php8.0-fpm,php8.1-cli,php8.1-fpm,php8.2-cli,php8.2-fpm,php8.3-cli,php8.3-fpm,php8.4-cli,php8.4-fpm,
-      php-cli,php-fpm
-    provides: php-cli,php-fpm,php-cgi,php-common,php-pie,symfony-cli,composer
-  - version: 8.4.6
+    extensions: apcu,bcmath,bz2,calendar,ctype,curl,dba,dom,event,exif,fileinfo,filter,ftp,gd,gmp,iconv,imagick,imap,intl,mbregex,mbstring,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pgsql,phar,posix,protobuf,readline,redis,session,shmop,simplexml,soap,sockets,sodium,sqlite3,swoole,swoole-hook-mysql,swoole-hook-pgsql,swoole-hook-sqlite,sysvmsg,sysvsem,sysvshm,tokenizer,xml,xmlreader,xmlwriter,xsl,zip,zlib
+    libs: pkg-config,lib-base,bzip2,zlib,openssl,brotli,libiconv,icu,libxml2,nghttp2,libcares,curl,libevent,libpng,libwebp,libjpeg,freetype,gmp,libtiff,libde265,libaom,libheif,libzip,imagemagick,imap,onig,ncurses,readline,libxslt,libsodium,postgresql,sqlite
+  - version: 8.4.10
     major: '8.4'
-    extensions: apcu,bcmath,bz2,calendar,ctype,curl,dba,dom,event,exif,fileinfo,filter,ftp,gd,gmp,iconv,imagick,imap,intl,
-      mbregex,mbstring,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pgsql,phar,posix,protobuf,readline,redis,
-      session,shmop,simplexml,soap,sockets,sodium,sqlite3,swoole,swoole-hook-mysql,swoole-hook-pgsql,swoole-hook-sqlite,
-      sysvmsg,sysvsem,sysvshm,tokenizer,xml,xmlreader,xmlwriter,xsl,zip,zlib
-    libs: pkg-config,lib-base,bzip2,zlib,openssl,brotli,libiconv,icu,libxml2,nghttp2,libcares,curl,libevent,libpng,
-      libwebp,libjpeg,freetype,gmp,libtiff,libde265,libaom,libheif,libzip,imagemagick,imap,onig,ncurses,readline,
-      libxslt,libsodium,postgresql,sqlite
-    conflicts: php8.0-cli,php8.0-fpm,php8.1-cli,php8.1-fpm,php8.2-cli,php8.2-fpm,php8.3-cli,php8.3-fpm,php8.4-cli,php8.4-fpm,
-      php-cli,php-fpm
-    provides: php-cli,php-fpm,php-cgi,php-common,php-pie,symfony-cli,composer
+    extensions: apcu,bcmath,bz2,calendar,ctype,curl,dba,dom,event,exif,fileinfo,filter,ftp,gd,gmp,iconv,imagick,imap,intl,mbregex,mbstring,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pgsql,phar,posix,protobuf,readline,redis,session,shmop,simplexml,soap,sockets,sodium,sqlite3,swoole,swoole-hook-mysql,swoole-hook-pgsql,swoole-hook-sqlite,sysvmsg,sysvsem,sysvshm,tokenizer,xml,xmlreader,xmlwriter,xsl,zip,zlib
+    libs: pkg-config,lib-base,bzip2,zlib,openssl,brotli,libiconv,icu,libxml2,nghttp2,libcares,curl,libevent,libpng,libwebp,libjpeg,freetype,gmp,libtiff,libde265,libaom,libheif,libzip,imagemagick,imap,onig,ncurses,readline,libxslt,libsodium,postgresql,sqlite
