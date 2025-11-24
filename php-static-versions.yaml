@@ -8,11 +8,11 @@ php_static_versions:
     major: '8.2'
     extensions: apcu,bcmath,bz2,calendar,ctype,curl,dba,dom,event,exif,fileinfo,filter,ftp,gd,gmp,iconv,imagick,imap,intl,mbregex,mbstring,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pgsql,phar,posix,protobuf,readline,redis,session,shmop,simplexml,soap,sockets,sodium,sqlite3,swoole,swoole-hook-mysql,swoole-hook-pgsql,swoole-hook-sqlite,sysvmsg,sysvsem,sysvshm,tokenizer,xml,xmlreader,xmlwriter,xsl,zip,zlib
     libs: pkg-config,lib-base,bzip2,zlib,openssl,brotli,libiconv,icu,libxml2,nghttp2,libcares,curl,libevent,libpng,libwebp,libjpeg,freetype,gmp,libtiff,libde265,libaom,libheif,libzip,imagemagick,imap,onig,ncurses,readline,libxslt,libsodium,postgresql,sqlite
-  - version: 8.3.27
+  - version: 8.3.28
     major: '8.3'
     extensions: apcu,bcmath,bz2,calendar,ctype,curl,dba,dom,event,exif,fileinfo,filter,ftp,gd,gmp,iconv,imagick,imap,intl,mbregex,mbstring,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pgsql,phar,posix,protobuf,readline,redis,session,shmop,simplexml,soap,sockets,sodium,sqlite3,swoole,swoole-hook-mysql,swoole-hook-pgsql,swoole-hook-sqlite,sysvmsg,sysvsem,sysvshm,tokenizer,xml,xmlreader,xmlwriter,xsl,zip,zlib
     libs: pkg-config,lib-base,bzip2,zlib,openssl,brotli,libiconv,icu,libxml2,nghttp2,libcares,curl,libevent,libpng,libwebp,libjpeg,freetype,gmp,libtiff,libde265,libaom,libheif,libzip,imagemagick,imap,onig,ncurses,readline,libxslt,libsodium,postgresql,sqlite
-  - version: 8.4.14
+  - version: 8.4.15
     major: '8.4'
     extensions: apcu,bcmath,bz2,calendar,ctype,curl,dba,dom,event,exif,fileinfo,filter,ftp,gd,gmp,iconv,imagick,imap,intl,mbregex,mbstring,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pgsql,phar,posix,protobuf,readline,redis,session,shmop,simplexml,soap,sockets,sodium,sqlite3,swoole,swoole-hook-mysql,swoole-hook-pgsql,swoole-hook-sqlite,sysvmsg,sysvsem,sysvshm,tokenizer,xml,xmlreader,xmlwriter,xsl,zip,zlib
     libs: pkg-config,lib-base,bzip2,zlib,openssl,brotli,libiconv,icu,libxml2,nghttp2,libcares,curl,libevent,libpng,libwebp,libjpeg,freetype,gmp,libtiff,libde265,libaom,libheif,libzip,imagemagick,imap,onig,ncurses,readline,libxslt,libsodium,postgresql,sqlite
